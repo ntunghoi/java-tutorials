@@ -20,10 +20,16 @@ repositories {
 dependencies {
     implementation(platform(libs.spring.boot.bom))
 
-    implementation(libs.spring.boot.starter.oauth2.resource.server)
-    implementation(libs.spring.boot.starter.oauth2.client)
-    implementation(libs.spring.boot.starter.oauth2.authorization.server)
+    // Lombok
+    compileOnly(libs.lombok) // compilation
+    annotationProcessor(libs.lombok) // annotation processor
+    testCompileOnly(libs.lombok)
+    testAnnotationProcessor(libs.lombok)
 
+    implementation(libs.spring.boot.starter.security.oauth2.authorization.server)
+    implementation(libs.spring.boot.starter.oauth2.client)
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.webflux)
     // This dependency is used by the application.
     implementation(libs.guava)
 }
