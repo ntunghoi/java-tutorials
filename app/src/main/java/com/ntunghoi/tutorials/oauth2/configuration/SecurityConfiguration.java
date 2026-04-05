@@ -5,18 +5,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -24,11 +20,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
-import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 
 import java.util.List;
@@ -52,42 +46,9 @@ public class SecurityConfiguration {
                     .build()
     );
 
-    // Chain 1: Authorization Server /oauth2/* endpoints  (highest priority)
+    // Chain 1: API endpoints
     @Bean
     @Order(1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity httpSecurity) {
-        OAuth2AuthorizationServerConfigurer auth2AuthorizationServerConfigurer =
-                new OAuth2AuthorizationServerConfigurer();
-
-        httpSecurity
-                .securityMatcher(auth2AuthorizationServerConfigurer.getEndpointsMatcher())
-                .with(
-                        auth2AuthorizationServerConfigurer,
-                        authorizationServer ->
-                                authorizationServer.oidc(Customizer.withDefaults()))
-                .authorizeHttpRequests(authorizeHttpRequestsCustomizer ->
-                        authorizeHttpRequestsCustomizer
-                                .requestMatchers("/index.html").permitAll()
-                                .anyRequest().authenticated()
-                )
-                // Redirect to /login if unauthenticated on auth server endpoints
-                .exceptionHandling(exceptionHandlingCustomize -> {
-                    exceptionHandlingCustomize
-                            .defaultAuthenticationEntryPointFor(
-                                    new LoginUrlAuthenticationEntryPoint("/login"),
-                                    new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-                            );
-                })
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                );
-
-        return httpSecurity.build();
-    }
-
-    // Chain 2: API endpoints
-    @Bean
-    @Order(2)
     public SecurityFilterChain apiFilterChain(HttpSecurity httpSecurity) {
         httpSecurity
                 .csrf(CsrfConfigurer::disable) // Disable CSRF for API endpoints
@@ -106,9 +67,9 @@ public class SecurityConfiguration {
         return httpSecurity.build();
     }
 
-    // Chain 3: Default - login form, user facing pages
+    // Chain 2: Default - login form, user facing pages
     @Bean
-    @Order(3)
+    @Order(2)
     public SecurityFilterChain defaultFilterChain(HttpSecurity httpSecurity) {
         httpSecurity
                 .csrf(csrfConfigurer -> csrfConfigurer

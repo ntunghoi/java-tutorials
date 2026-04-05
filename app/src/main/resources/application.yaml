@@ -15,26 +15,6 @@ spring:
       name: admin
       password: password
       roles: ADMIN
-    oauth2:
-      authorizationserver:
-        client:
-          my-client:
-            registration:
-              client-id: my-client
-              client-secret: "{noop}my-secret"
-              client-authentication-methods:
-                - client_secret_basic
-              authorization-grant-types:
-                - authorization_code
-                - refresh_token
-                - client_credentials
-              redirect-uris:
-                - "http://127.0.0.1:8080/login/oauth2/code/my-client"
-              scopes:
-                - openid
-                - profile
-                - read
-              require-authorization-consent: true
 server:
   port: 8080
 logging:
