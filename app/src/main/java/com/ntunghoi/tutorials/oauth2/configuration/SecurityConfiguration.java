@@ -1,20 +1,20 @@
 package com.ntunghoi.tutorials.oauth2.configuration;
 
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
@@ -22,27 +22,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.List;
-import java.util.UUID;
 
 @Configuration
 @EnableWebSecurity
@@ -51,14 +40,14 @@ import java.util.UUID;
 public class SecurityConfiguration {
     private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private static final List<UserDetails> IN_MEMORY_USERS = List.of(
-            User.withDefaultPasswordEncoder()
+            User.builder()
                     .username("alice")
-                    .password("password")
+                    .password(passwordEncoder.encode("password"))
                     .roles("USER", "ADMIN")
                     .build(),
-            User.withDefaultPasswordEncoder()
+            User.builder()
                     .username("bob")
-                    .password("password")
+                    .password(passwordEncoder.encode("password"))
                     .roles("USER")
                     .build()
     );
@@ -77,7 +66,9 @@ public class SecurityConfiguration {
                         authorizationServer ->
                                 authorizationServer.oidc(Customizer.withDefaults()))
                 .authorizeHttpRequests(authorizeHttpRequestsCustomizer ->
-                        authorizeHttpRequestsCustomizer.anyRequest().authenticated()
+                        authorizeHttpRequestsCustomizer
+                                .requestMatchers("/index.html").permitAll()
+                                .anyRequest().authenticated()
                 )
                 // Redirect to /login if unauthenticated on auth server endpoints
                 .exceptionHandling(exceptionHandlingCustomize -> {
@@ -94,20 +85,43 @@ public class SecurityConfiguration {
         return httpSecurity.build();
     }
 
-    // Chain 2: Default - login form, user facing pages
+    // Chain 2: API endpoints
     @Bean
     @Order(2)
+    public SecurityFilterChain apiFilterChain(HttpSecurity httpSecurity) {
+        httpSecurity
+                .csrf(CsrfConfigurer::disable) // Disable CSRF for API endpoints
+                .securityMatcher("/api/**")
+                .securityMatcher(
+                        new NegatedRequestMatcher(
+                                PathPatternRequestMatcher.pathPattern("/api/csrf")
+                        )
+                )
+                .authorizeHttpRequests(authorizeHttpRequestsCustomizer -> authorizeHttpRequestsCustomizer
+                        .requestMatchers(HttpMethod.POST, "/api/sessions").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/sessions").permitAll()
+                        .anyRequest().authenticated()
+                );
+
+        return httpSecurity.build();
+    }
+
+    // Chain 3: Default - login form, user facing pages
+    @Bean
+    @Order(3)
     public SecurityFilterChain defaultFilterChain(HttpSecurity httpSecurity) {
         httpSecurity
+                .csrf(csrfConfigurer -> csrfConfigurer
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler())
+                )
                 .authorizeHttpRequests(authorizeHttpRequestsCustomizer -> authorizeHttpRequestsCustomizer
-                        .requestMatchers("/login", "/error").permitAll()
+                        .requestMatchers("/login", "/logout", "/error", "/index.html").permitAll()
+                        .requestMatchers("/api/csrf").permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(Customizer.withDefaults())
-                .logout(logout -> logout
-                        .logoutSuccessUrl("/login?logout")
-                        .permitAll()
-                );
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable);
 
         return httpSecurity.build();
     }
@@ -118,60 +132,15 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("my-client")
-                .clientSecret("{noop}my-secret") // {noop} - plain text; use BCrypt in production
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/my-client")
-                .postLogoutRedirectUri("http://127.0.0.1:8080/")
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .scope("read")
-                .scope("write")
-                .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(true)
-                        .build())
-                .build();
-
-        return new InMemoryRegisteredClientRepository(oidcClient);
-    }
-
-    // RSA key pair for signing JWTs
-    // Generate a new one on each restart
-    @Bean
-    public JWKSource<SecurityContext> jwkSource() {
-        try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
-            KeyPair keyPair = keyPairGenerator.generateKeyPair();
-            RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-            RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
-
-            RSAKey rsaKey = new RSAKey.Builder(publicKey)
-                    .privateKey(privateKey)
-                    .keyID(UUID.randomUUID().toString())
-                    .build();
-
-            return new ImmutableJWKSet<>(new JWKSet(rsaKey));
-        } catch (NoSuchAlgorithmException noSuchAlgorithmException) {
-            throw new IllegalStateException();
-        }
-    }
-
-    // JWT decoder - validate tokens
-    @Bean
-    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
-        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
+    public PasswordEncoder passwordEncoder() {
+        return passwordEncoder;
     }
 
     @Bean
-    public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder()
-                .issuer("http://127.0.0.1:8080")
-                .build();
+    public AuthenticationManager authenticationManager() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService());
+        provider.setPasswordEncoder(passwordEncoder());
+
+        return new ProviderManager(provider);
     }
 }

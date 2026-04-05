@@ -10,6 +10,7 @@ spring-boot = "4.0.5"
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lomobok" }
 spring-boot-bom = { group = "org.springframework.boot", name = "spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
 spring-boot-starter-security-oauth2-authorization-server = { group = "org.springframework.boot", name = "spring-boot-starter-security-oauth2-authorization-server" }
 spring-boot-starter-oauth2-client = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-client" }
 spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web" }

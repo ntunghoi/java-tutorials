@@ -26,6 +26,7 @@ dependencies {
     testCompileOnly(libs.lombok)
     testAnnotationProcessor(libs.lombok)
 
+    implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.boot.starter.security.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.client)
     implementation(libs.spring.boot.starter.web)
