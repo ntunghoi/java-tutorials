@@ -1,0 +1,469 @@
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-sans); font-size: 14px; color: var(--color-text-primary); }
+    .app { display: flex; height: 100vh; min-height: 580px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+    .sidebar { width: 200px; min-width: 200px; background: var(--color-background-secondary); border-right: 0.5px solid var(--color-border-tertiary); display: flex; flex-direction: column; padding: 16px 0; }
+    .sidebar-title { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 16px 12px; }
+    .nav-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: var(--color-text-secondary); border-left: 2px solid transparent; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+    .nav-item:hover { background: var(--color-background-primary); color: var(--color-text-primary); }
+    .nav-item.active { color: var(--color-text-primary); border-left-color: #533AB7; background: var(--color-background-primary); font-weight: 500; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-border-secondary); flex-shrink: 0; }
+    .nav-item.active .nav-dot { background: #533AB7; }
+    .nav-item.done .nav-dot { background: #1D9E75; }
+    .nav-item.done { color: var(--color-text-secondary); }
+    .main { flex: 1; overflow-y: auto; padding: 24px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+    .page-sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 24px; line-height: 1.5; }
+    .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 16px 20px; margin-bottom: 16px; }
+    .card-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+    .form-row input { width: 100%; padding: 7px 10px; font-size: 13px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-primary); outline: none; font-family: var(--font-sans); }
+    .form-row input:focus { border-color: #7F77DD; box-shadow: 0 0 0 2px rgba(127,119,221,0.15); }
+    .btn { padding: 8px 18px; font-size: 13px; font-weight: 500; border-radius: var(--border-radius-md); cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); font-family: var(--font-sans); transition: all 0.15s; }
+    .btn:hover { background: var(--color-background-secondary); }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: #533AB7; color: #E8E5FF; border-color: #533AB7; }
+    .btn-primary:hover { background: #3C2A9A; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .token-box { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; word-break: break-all; line-height: 1.6; color: var(--color-text-secondary); max-height: 90px; overflow-y: auto; position: relative; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--border-radius-md); }
+    .badge-purple { background: #EEEDFE; color: #3C3489; }
+    .badge-green { background: #EAF3DE; color: #27500A; }
+    .badge-amber { background: #FAEEDA; color: #633806; }
+    .badge-red { background: #FCEBEB; color: #791F1F; }
+    .badge-blue { background: #E6F1FB; color: #0C447C; }
+    .kv { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+    .kv:last-child { border-bottom: none; }
+    .kv-key { color: var(--color-text-secondary); }
+    .kv-val { font-weight: 500; text-align: right; max-width: 60%; word-break: break-all; }
+    .alert { border-radius: var(--border-radius-md); padding: 10px 14px; font-size: 13px; margin-bottom: 16px; border: 0.5px solid; }
+    .alert-success { background: #EAF3DE; color: #27500A; border-color: #C0DD97; }
+    .alert-error { background: #FCEBEB; color: #791F1F; border-color: #F7C1C1; }
+    .alert-info { background: #E6F1FB; color: #0C447C; border-color: #B5D4F4; }
+    .http-block { border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); overflow: hidden; margin-bottom: 14px; }
+    .http-header { background: var(--color-background-secondary); padding: 7px 12px; font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; }
+    .http-body { font-family: var(--font-mono); font-size: 11px; padding: 10px 12px; line-height: 1.7; color: var(--color-text-secondary); background: var(--color-background-primary); white-space: pre; overflow-x: auto; }
+    .method { font-weight: 500; }
+    .method-post { color: #BA7517; }
+    .method-get { color: #0F6E56; }
+    .step-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+    .step-num { width: 24px; height: 24px; min-width: 24px; border-radius: 50%; background: #EEEDFE; color: #3C3489; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+    .step-content { flex: 1; }
+    .step-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+    .step-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+    .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 20px 0; }
+    .footer-nav { display: flex; justify-content: space-between; margin-top: 24px; }
+    .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .highlight { color: #533AB7; font-weight: 500; }
+</style>
+
+<div class="app">
+    <div class="sidebar">
+        <div class="sidebar-title">Demo flow</div>
+        <div class="nav-item active" data-page="0" onclick="goPage(0)">
+            <div class="nav-dot"></div>
+            Overview
+        </div>
+        <div class="nav-item" data-page="1" onclick="goPage(1)">
+            <div class="nav-dot"></div>
+            1. Login
+        </div>
+        <div class="nav-item" data-page="2" onclick="goPage(2)">
+            <div class="nav-dot"></div>
+            2. Get token
+        </div>
+        <div class="nav-item" data-page="3" onclick="goPage(3)">
+            <div class="nav-dot"></div>
+            3. Call API
+        </div>
+        <div class="nav-item" data-page="4" onclick="goPage(4)">
+            <div class="nav-dot"></div>
+            4. Exchange token
+        </div>
+        <div class="nav-item" data-page="5" onclick="goPage(5)">
+            <div class="nav-dot"></div>
+            5. Use new token
+        </div>
+    </div>
+
+    <div class="main">
+
+        <div class="page active" id="page-0">
+            <div class="page-title">OAuth2 token exchange - interactive demo</div>
+            <div class="page-sub">Walk through each step to see how a user logs in, gets an access token, calls a
+                protected API, and exchanges that token for a downstream service token — all within a single Spring Boot
+                app.
+            </div>
+            <div class="card">
+                <div class="card-label">Architecture</div>
+                <div class="step-row">
+                    <div class="step-num">A</div>
+                    <div class="step-content">
+                        <div class="step-title">Authorization server - <span
+                                style="font-family:var(--font-mono);font-size:12px">:8080/oauth2/token</span></div>
+                        <div class="step-desc">Issues JWTs signed with an RSA key. Handles login, authorization code
+                            flow, client credentials, and token exchange.
+                        </div>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num">B</div>
+                    <div class="step-content">
+                        <div class="step-title">Resource server - <span
+                                style="font-family:var(--font-mono);font-size:12px">:8080/api/**</span></div>
+                        <div class="step-desc">Validates Bearer tokens using the same local JwtDecoder. No HTTP
+                            round-trip needed — keys are in-process.
+                        </div>
+                    </div>
+                </div>
+                <div class="step-row" style="margin-bottom:0">
+                    <div class="step-num">C</div>
+                    <div class="step-content">
+                        <div class="step-title">Token exchange - RFC 8693</div>
+                        <div class="step-desc">The resource server can call <span
+                                style="font-family:var(--font-mono);font-size:12px">/oauth2/token</span> with grant type
+                            <span style="font-family:var(--font-mono);font-size:12px">token-exchange</span> to mint a
+                            new token scoped to a downstream service.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-label">Users for this demo</div>
+                <div class="kv"><span class="kv-key">user / password</span><span><span class="badge badge-blue">ROLE_USER</span></span>
+                </div>
+                <div class="kv"><span class="kv-key">admin / admin</span><span><span
+                        class="badge badge-blue">ROLE_USER</span> <span
+                        class="badge badge-purple">ROLE_ADMIN</span></span></div>
+            </div>
+            <div class="footer-nav"><span></span>
+                <button class="btn btn-primary" onclick="goPage(1)">Start demo -></button>
+            </div>
+        </div>
+
+        <div class="page" id="page-1">
+            <div class="page-title">Step 1 — Login</div>
+            <div class="page-sub">The user authenticates via Spring Security's form login. On success, the Authorization
+                Server creates an authorization code that will be exchanged for a token.
+            </div>
+            <div class="card">
+                <div class="card-label">Login form — POST /login</div>
+                <div class="form-row"><label>Username</label><input id="username" type="text" value="user"
+                                                                    placeholder="user or admin"/></div>
+                <div class="form-row"><label>Password</label><input id="password" type="password" value="password"/>
+                </div>
+                <button class="btn btn-primary" onclick="doLogin()">Sign in</button>
+            </div>
+            <div id="login-result"></div>
+            <div class="http-block">
+                <div class="http-header"><span class="method method-post">POST</span> /login (form submit)</div>
+                <div class="http-body">Content-Type: application/x-www-form-urlencoded
+
+                    username=user&password=password
+
+                    → 302 redirect to /oauth2/authorize?...
+                    → 302 redirect to redirect_uri with ?code=AUTH_CODE
+                </div>
+            </div>
+            <div class="footer-nav">
+                <button class="btn" onclick="goPage(0)">← Back</button>
+                <button class="btn btn-primary" onclick="goPage(2)">Next →</button>
+            </div>
+        </div>
+
+        <div class="page" id="page-2">
+            <div class="page-title">Step 2 - Get access token</div>
+            <div class="page-sub">The client sends the authorization code to the token endpoint. The server validates it
+                and returns a signed JWT access token.
+            </div>
+            <div class="card">
+                <div class="card-label">Token request — POST /oauth2/token</div>
+                <div class="http-block" style="margin-bottom:0">
+                    <div class="http-header"><span class="method method-post">POST</span> /oauth2/token</div>
+                    <div class="http-body">Authorization: Basic bXktY2xpZW50OnNlY3JldA==
+                        Content-Type: application/x-www-form-urlencoded
+
+                        grant_type=authorization_code
+                        &code=AUTH_CODE_FROM_REDIRECT
+                        &redirect_uri=http://localhost:8080/login/oauth2/code/my-client
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="margin-bottom:16px" onclick="doGetToken()">Simulate token issuance
+            </button>
+            <div id="token-result"></div>
+            <div class="footer-nav">
+                <button class="btn" onclick="goPage(1)">← Back</button>
+                <button class="btn btn-primary" onclick="goPage(3)">Next -></button>
+            </div>
+        </div>
+
+        <div class="page" id="page-3">
+            <div class="page-title">Step 3 - Call protected API</div>
+            <div class="page-sub">The client sends the JWT as a Bearer token. The resource server validates it locally
+                using the shared JwtDecoder and maps the <span
+                        style="font-family:var(--font-mono);font-size:12px">roles</span> claim to Spring Security
+                authorities.
+            </div>
+            <div id="api-token-info"></div>
+            <div class="card">
+                <div class="card-label">Choose an endpoint to call</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="btn btn-sm" onclick="callApi('/api/me', 'user')">GET /api/me</button>
+                    <button class="btn btn-sm" onclick="callApi('/api/admin', 'user')">GET /api/admin (as user)</button>
+                    <button class="btn btn-sm" onclick="callApi('/api/admin', 'admin')">GET /api/admin (as admin)
+                    </button>
+                </div>
+            </div>
+            <div id="api-result"></div>
+            <div class="footer-nav">
+                <button class="btn" onclick="goPage(2)"><-Back</button>
+                <button class="btn btn-primary" onclick="goPage(4)">Next -></button>
+            </div>
+        </div>
+
+        <div class="page" id="page-4">
+            <div class="page-title">Step 4 — Exchange the token</div>
+            <div class="page-sub">The resource server acts as a client and swaps the user's token for a new one scoped
+                to a downstream service. This is the RFC 8693 token exchange grant type.
+            </div>
+            <div class="card">
+                <div class="card-label">Token exchange request</div>
+                <div class="http-block" style="margin-bottom:12px">
+                    <div class="http-header"><span class="method method-post">POST</span> /oauth2/token</div>
+                    <div class="http-body">Authorization: Basic bXktY2xpZW50OnNlY3JldA==
+                        Content-Type: application/x-www-form-urlencoded
+
+                        grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+                        &subject_token=<span class="highlight">&lt;original access token&gt;</span>
+                        &subject_token_type=urn:ietf:params:oauth:token-type:access_token
+                        &requested_token_type=urn:ietf:params:oauth:token-type:access_token
+                        &audience=<span class="highlight">internal-service</span></div>
+                </div>
+                <div class="form-row">
+                    <label>Target audience (downstream service)</label>
+                    <input id="audience" type="text" value="internal-service"/>
+                </div>
+                <button class="btn btn-primary" onclick="doExchange()">Exchange token</button>
+            </div>
+            <div id="exchange-result"></div>
+            <div class="footer-nav">
+                <button class="btn" onclick="goPage(3)">← Back</button>
+                <button class="btn btn-primary" onclick="goPage(5)">Next →</button>
+            </div>
+        </div>
+
+        <div class="page" id="page-5">
+            <div class="page-title">Step 5 — Use the exchanged token</div>
+            <div class="page-sub">The new token is scoped to the downstream service. Inspect and compare both tokens —
+                notice the audience and any scope differences.
+            </div>
+            <div id="compare-view"></div>
+            <div class="card" style="margin-top:16px">
+                <div class="card-label">What changed?</div>
+                <div class="step-row">
+                    <div class="step-num" style="background:#E1F5EE;color:#085041">✓</div>
+                    <div class="step-content">
+                        <div class="step-title">Audience (<span
+                                style="font-family:var(--font-mono);font-size:12px">aud</span>) is now scoped to <span
+                                style="font-family:var(--font-mono);font-size:12px">internal-service</span></div>
+                        <div class="step-desc">The downstream service can reject tokens not addressed to it, limiting
+                            token reuse across services.
+                        </div>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num" style="background:#E1F5EE;color:#085041">✓</div>
+                    <div class="step-content">
+                        <div class="step-title">New expiry — shorter TTL possible</div>
+                        <div class="step-desc">Token exchange lets you issue tighter short-lived tokens for
+                            machine-to-machine hops without re-authenticating the user.
+                        </div>
+                    </div>
+                </div>
+                <div class="step-row" style="margin-bottom:0">
+                    <div class="step-num" style="background:#E1F5EE;color:#085041">✓</div>
+                    <div class="step-content">
+                        <div class="step-title">Original subject (<span
+                                style="font-family:var(--font-mono);font-size:12px">sub</span>) preserved
+                        </div>
+                        <div class="step-desc">The downstream service still knows which user initiated the call,
+                            enabling end-to-end audit trails.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-nav">
+                <button class="btn" onclick="goPage(4)">← Back</button>
+                <button class="btn"
+                        onclick="sendPrompt('How do I customize the token exchange to add extra claims or restrict which clients can exchange tokens?')">
+                    Ask a follow-up ↗
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const state = { page: 0, user: null, token: null, exchangedToken: null };
+
+    function goPage(n) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      document.getElementById('page-' + n).classList.add('active');
+      document.querySelectorAll('.nav-item')[n].classList.add('active');
+      state.page = n;
+      if (n === 3) renderApiTokenInfo();
+      if (n === 5) renderCompare();
+    }
+
+    function fakeJwt(sub, roles, aud, exp) {
+      const header = btoa(JSON.stringify({alg:'RS256',typ:'JWT'})).replace(/=/g,'');
+      const payload = btoa(JSON.stringify({
+        sub, iss:'http://localhost:8080', aud: aud || 'my-client',
+        roles, exp: Math.floor(Date.now()/1000) + (exp || 3600),
+        iat: Math.floor(Date.now()/1000), jti: Math.random().toString(36).slice(2)
+      })).replace(/=/g,'');
+      return header + '.' + payload + '.SIG_OMITTED_FOR_DEMO';
+    }
+
+    function decodePayload(jwt) {
+      try { return JSON.parse(atob(jwt.split('.')[1])); } catch(e) { return {}; }
+    }
+
+    function doLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      const users = { user: { pass:'password', roles:['ROLE_USER'] }, admin: { pass:'admin', roles:['ROLE_USER','ROLE_ADMIN'] } };
+      const el = document.getElementById('login-result');
+      if (!users[u] || users[u].pass !== p) {
+        el.innerHTML = '<div class="alert alert-error">Invalid credentials. Try user/password or admin/admin.</div>'; return;
+      }
+      state.user = { name: u, roles: users[u].roles };
+      el.innerHTML = `<div class="alert alert-success">
+        Signed in as <strong>${u}</strong>
+        <div class="tag-row">${users[u].roles.map(r => `<span class="badge badge-purple">${r}</span>`).join('')}</div>
+        <div style="margin-top:6px;font-size:12px;color:#27500A">→ Authorization code issued, ready to exchange for a token</div>
+      </div>`;
+      document.querySelectorAll('.nav-item')[1].classList.add('done');
+    }
+
+    function doGetToken() {
+      if (!state.user) {
+        document.getElementById('token-result').innerHTML = '<div class="alert alert-error">Please complete step 1 first.</div>'; return;
+      }
+      state.token = fakeJwt(state.user.name, state.user.roles, 'my-client');
+      const p = decodePayload(state.token);
+      document.getElementById('token-result').innerHTML = `
+        <div class="alert alert-success">Access token issued successfully.</div>
+        <div class="card">
+          <div class="card-label">Response — access_token (JWT)</div>
+          <div class="token-box">${state.token}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Decoded payload</div>
+          <div class="kv"><span class="kv-key">sub</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${p.sub}</span></div>
+          <div class="kv"><span class="kv-key">aud</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${p.aud}</span></div>
+          <div class="kv"><span class="kv-key">roles</span><span class="kv-val">${p.roles.map(r=>`<span class="badge badge-purple" style="margin-left:4px">${r}</span>`).join('')}</span></div>
+          <div class="kv"><span class="kv-key">exp</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${new Date(p.exp*1000).toISOString()}</span></div>
+          <div class="kv"><span class="kv-key">iss</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${p.iss}</span></div>
+        </div>`;
+      document.querySelectorAll('.nav-item')[2].classList.add('done');
+    }
+
+    function renderApiTokenInfo() {
+      const el = document.getElementById('api-token-info');
+      if (!state.token) { el.innerHTML = '<div class="alert alert-info">No token yet — complete step 2 first.</div>'; return; }
+      const p = decodePayload(state.token);
+      el.innerHTML = `<div class="alert alert-info" style="margin-bottom:16px">Using token for <strong>${p.sub}</strong> with roles: ${p.roles.map(r=>`<span class="badge badge-purple" style="margin-left:4px">${r}</span>`).join('')}</div>`;
+    }
+
+    function callApi(endpoint, asRole) {
+      const el = document.getElementById('api-result');
+      if (!state.token) { el.innerHTML = '<div class="alert alert-error">No token yet — complete step 2 first.</div>'; return; }
+      const p = decodePayload(state.token);
+      const currentRoles = p.roles || [];
+      if (endpoint === '/api/admin' && !currentRoles.includes('ROLE_ADMIN') && asRole === 'user') {
+        el.innerHTML = `
+          <div class="http-block">
+            <div class="http-header"><span class="method method-get">GET</span> ${endpoint}</div>
+            <div class="http-body">Authorization: Bearer ${state.token.slice(0,40)}...
+
+    ← HTTP 403 Forbidden</div>
+          </div>
+          <div class="alert alert-error">
+            <strong>403 Forbidden</strong> — ROLE_ADMIN required.<br>
+            <span style="font-size:12px">Spring's @PreAuthorize("hasRole('ADMIN')") rejected the request.</span>
+          </div>`;
+        return;
+      }
+      const body = endpoint === '/api/me'
+        ? { subject: p.sub, roles: p.roles, expires: new Date(p.exp*1000).toISOString() }
+        : { message: 'Admin access granted', user: asRole };
+      el.innerHTML = `
+        <div class="http-block">
+          <div class="http-header"><span class="method method-get">GET</span> ${endpoint}</div>
+          <div class="http-body">Authorization: Bearer ${state.token.slice(0,40)}...
+
+    ← HTTP 200 OK
+    ${JSON.stringify(body, null, 2)}</div>
+        </div>
+        <div class="alert alert-success"><strong>200 OK</strong> — token validated locally, no JWKS HTTP call needed.</div>`;
+      document.querySelectorAll('.nav-item')[3].classList.add('done');
+    }
+
+    function doExchange() {
+      if (!state.token) {
+        document.getElementById('exchange-result').innerHTML = '<div class="alert alert-error">No token to exchange — complete step 2 first.</div>'; return;
+      }
+      const aud = document.getElementById('audience').value.trim() || 'internal-service';
+      const orig = decodePayload(state.token);
+      state.exchangedToken = fakeJwt(orig.sub, orig.roles, aud, 900);
+      const p = decodePayload(state.exchangedToken);
+      document.getElementById('exchange-result').innerHTML = `
+        <div class="alert alert-success">Token exchanged successfully for audience <strong>${aud}</strong>.</div>
+        <div class="card">
+          <div class="card-label">New token</div>
+          <div class="token-box">${state.exchangedToken}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Decoded payload</div>
+          <div class="kv"><span class="kv-key">sub</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${p.sub}</span></div>
+          <div class="kv"><span class="kv-key">aud</span><span class="kv-val"><span class="badge badge-amber">${p.aud}</span></span></div>
+          <div class="kv"><span class="kv-key">roles</span><span class="kv-val">${p.roles.map(r=>`<span class="badge badge-purple" style="margin-left:4px">${r}</span>`).join('')}</span></div>
+          <div class="kv"><span class="kv-key">exp</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${new Date(p.exp*1000).toISOString()} <span class="badge badge-green" style="margin-left:4px">15 min TTL</span></span></div>
+        </div>`;
+      document.querySelectorAll('.nav-item')[4].classList.add('done');
+    }
+
+    function renderCompare() {
+      const el = document.getElementById('compare-view');
+      if (!state.token || !state.exchangedToken) {
+        el.innerHTML = '<div class="alert alert-info">Complete steps 2 and 4 first.</div>'; return;
+      }
+      const o = decodePayload(state.token);
+      const n = decodePayload(state.exchangedToken);
+      el.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="card">
+            <div class="card-label">Original token</div>
+            <div class="kv"><span class="kv-key">sub</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${o.sub}</span></div>
+            <div class="kv"><span class="kv-key">aud</span><span class="kv-val"><span class="badge badge-blue">${o.aud}</span></span></div>
+            <div class="kv"><span class="kv-key">TTL</span><span class="kv-val">60 min</span></div>
+            <div class="kv"><span class="kv-key">issued for</span><span class="kv-val" style="font-size:12px">user-facing client</span></div>
+          </div>
+          <div class="card" style="border-color:var(--color-border-info)">
+            <div class="card-label">Exchanged token</div>
+            <div class="kv"><span class="kv-key">sub</span><span class="kv-val" style="font-family:var(--font-mono);font-size:12px">${n.sub}</span></div>
+            <div class="kv"><span class="kv-key">aud</span><span class="kv-val"><span class="badge badge-amber">${n.aud}</span></span></div>
+            <div class="kv"><span class="kv-key">TTL</span><span class="kv-val"><span class="badge badge-green">15 min</span></span></div>
+            <div class="kv"><span class="kv-key">issued for</span><span class="kv-val" style="font-size:12px">downstream service</span></div>
+          </div>
+        </div>`;
+      document.querySelectorAll('.nav-item')[5].classList.add('done');
+    }
+</script>
