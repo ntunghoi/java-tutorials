@@ -56,3 +56,8 @@ application {
     // Define the main class for the application.
     mainClass = "com.ntunghoi.tutorials.oauth2.TokenExchangeApp"
 }
+
+tasks.withType<JavaCompile>() {
+    options.compilerArgs.add("--enable-preview")
+    options.compilerArgs.add("-Xlint:preview")
+}
